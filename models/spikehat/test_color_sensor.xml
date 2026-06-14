@@ -1,0 +1,134 @@
+<mujoco model="test_color_sensor">
+
+  <compiler angle="degree" meshdir="meshes/"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <visual>
+    <headlight diffuse="0.8 0.8 0.8" ambient="0.4 0.4 0.4" specular="0.1 0.1 0.1"/>
+  </visual>
+
+  <!--
+    カラーセンサーテスト用モデル
+
+    構成:
+      - color_sensor_body: カラーセンサー本体（スライダーで左右に移動）
+        - color_site: センサーの検出点（真下を向く）
+      - 色ブロック（左から右に並ぶ）:
+        - block_red    : 赤   (LEGO 4 Red)
+        - block_blue   : 青   (LEGO 1 Blue)
+        - block_yellow : 黄   (LEGO 14 Yellow)
+        - block_white  : 白   (LEGO 15 White)
+        - block_black  : 黒   (LEGO 26 Black)
+        - block_green  : 緑   (LEGO 6 Green)
+
+    操作:
+      - Controlスライダー "sensor_slide" でセンサーを左右に移動
+      - センサーが各色ブロックの上に来るとHSV値が変わる
+
+    座標系:
+      - X軸: 左右（プラスが右）
+      - Y軸: 前後
+      - Z軸: 上下（プラスが上）
+
+    ブロック配置: X方向に0.032m（4ポッチ）間隔で並べる
+  -->
+
+  <asset>
+    <!-- 床のテクスチャ -->
+    <texture name="grid" type="2d" builtin="checker"
+             width="512" height="512"
+             rgb1="0.7 0.7 0.7" rgb2="0.8 0.8 0.8"/>
+    <material name="grid_mat" texture="grid" texrepeat="4 4"/>
+  </asset>
+
+  <worldbody>
+    <light name="light_top" pos="0 0 1.0" dir="0 0 -1"
+           diffuse="0.8 0.8 0.8" specular="0.1 0.1 0.1" directional="true"/>
+
+    <!-- 床 -->
+    <geom name="floor" type="plane" size="0.5 0.5 0.01"
+          material="grid_mat" contype="1" conaffinity="1"/>
+
+    <!-- ────────────────────────────────────────────────
+         色ブロック（床の上に固定配置）
+         高さ: 0.0096m（1.2ポッチ）
+         幅:   0.032m（4ポッチ）間隔
+    ──────────────────────────────────────────────── -->
+
+    <!-- 赤ブロック (LEGO 4 Red: 0.578, 0.010, 0.002) -->
+    <geom name="block_red" type="box"
+          pos="-0.080 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.578 0.010 0.002 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- 青ブロック (LEGO 1 Blue: 0.000, 0.089, 0.515) -->
+    <geom name="block_blue" type="box"
+          pos="-0.048 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.000 0.089 0.515 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- 黄ブロック (LEGO 14 Yellow: 0.992, 0.843, 0.000) -->
+    <geom name="block_yellow" type="box"
+          pos="-0.016 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.992 0.843 0.000 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- 白ブロック (LEGO 15 White: 0.991, 0.991, 0.991) -->
+    <geom name="block_white" type="box"
+          pos="0.016 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.991 0.991 0.991 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- 黒ブロック (LEGO 26 Black: 0.027, 0.027, 0.027) -->
+    <geom name="block_black" type="box"
+          pos="0.048 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.027 0.027 0.027 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- 緑ブロック (LEGO 6 Green: 0.000, 0.373, 0.165) -->
+    <geom name="block_green" type="box"
+          pos="0.080 0 0.008" size="0.012 0.012 0.008"
+          rgba="0.000 0.373 0.165 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- ────────────────────────────────────────────────
+         カラーセンサー本体
+         スライダージョイントでX方向に移動
+         初期位置: 赤ブロックの上
+    ──────────────────────────────────────────────── -->
+    <body name="color_sensor_body" pos="-0.080 0 0.030">
+      <joint name="sensor_slide" type="slide" axis="1 0 0"
+             range="-0.010 0.170" damping="10.0"/>
+      <inertial pos="0 0 0" mass="0.01" diaginertia="0.0001 0.0001 0.0001"/>
+
+      <!-- センサー本体（視覚化用） -->
+      <geom name="sensor_body_geom" type="box"
+            pos="0 0 0" size="0.010 0.010 0.005"
+            rgba="0.3 0.3 0.3 0.8"
+            contype="0" conaffinity="0"/>
+
+      <!-- 検出点（真下を向く） -->
+      <site name="color_site" pos="0 0 -0.005"
+            size="0.005" rgba="1 1 0 1"/>
+      <!-- リンクするためのタグ -->
+      <camera name="color_camera"
+            mode="fixed"
+            pos="0 0 -0.005"
+            xyaxes="1 0 0  0 1 0"/>
+    </body>
+
+  </worldbody>
+
+  <!-- スライダーアクチュエーター -->
+  <actuator>
+    <position name="sensor_slide_ctrl" joint="sensor_slide"
+              kp="100" ctrllimited="true" ctrlrange="-0.010 0.170"/>
+  </actuator>
+
+  <!-- センサー位置センサー -->
+  <sensor>
+    <jointpos name="sensor_position" joint="sensor_slide"/>
+    <framepos name="color_site_pos" objtype="site" objname="color_site"/>
+  </sensor>
+
+</mujoco>
