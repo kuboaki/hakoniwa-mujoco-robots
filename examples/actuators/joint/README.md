@@ -14,6 +14,8 @@ This example opens a MuJoCo viewer and shows the MJCF-native way to use joint ac
 examples/actuators/joint/
   README.md
   joint-actuator-example.cpp
+  joint-actuator-hakoniwa-asset.cpp
+  joint_actuator_sender.py
 
 models/actuators/joint/
   position-velocity-actuator-sample.xml
@@ -21,11 +23,19 @@ models/actuators/joint/
 config/actuator/joint/
   sample_position_actuator.json
   sample_velocity_actuator.json
+
+config/
+  joint-actuator-pdudef-compact.json
+  joint-actuator-pdutypes.json
+  endpoint/joint_actuator_endpoint.json
+  sensors/joint_state/joint-actuator-joint-states.json
 ```
 
 Read these first:
 
 - [`joint-actuator-example.cpp`](./joint-actuator-example.cpp): the Joint Actuator API usage
+- [`joint-actuator-hakoniwa-asset.cpp`](./joint-actuator-hakoniwa-asset.cpp): Hakoniwa PDU command receiver with a MuJoCo viewer
+- [`joint_actuator_sender.py`](./joint_actuator_sender.py): Python Hakoniwa asset that sends `std_msgs/Float64` commands and reads `sensor_msgs/JointState`
 - [`position-velocity-actuator-sample.xml`](../../../models/actuators/joint/position-velocity-actuator-sample.xml): the MJCF `<position>` and `<velocity>` actuators
 - [`sample_position_actuator.json`](../../../config/actuator/joint/sample_position_actuator.json): JSON binding for the position actuator
 - [`sample_velocity_actuator.json`](../../../config/actuator/joint/sample_velocity_actuator.json): JSON binding for the velocity actuator
@@ -51,13 +61,26 @@ The config resolves the MuJoCo actuator by name:
 
 ```json
 {
-  "joint_name": "position_hinge",
-  "type": "position",
-  "RuntimeBinding": {
+  "spec": {
+    "joint_name": "position_hinge",
+    "type": "position",
+    "limit": {
+      "lower": -0.8,
+      "upper": 0.8
+    }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
     "actuator_name": "position_servo"
   }
 }
 ```
+
+`spec.joint_name` is the MJCF joint name. `mjcf_binding.actuator_name` is the
+MJCF actuator name. The older top-level `joint_name` / `type` and
+`RuntimeBinding` format is still accepted for compatibility, but new configs
+should use `spec` and `mjcf_binding`.
 
 The model defines the actual actuator behavior:
 
@@ -78,6 +101,12 @@ Or, if CMake has already been configured:
 
 ```bash
 cmake --build src/cmake-build --target joint-actuator-example
+```
+
+The Hakoniwa PDU example target is:
+
+```bash
+cmake --build src/cmake-build --target joint-actuator-hakoniwa-asset
 ```
 
 ## Run
@@ -103,3 +132,38 @@ q / Esc: quit
 ```
 
 Use the mouse to rotate and zoom the viewer.
+
+## Hakoniwa PDU Example
+
+The Hakoniwa version receives position and velocity commands from PDU channels:
+
+```text
+JointActuatorAsset/position_target
+JointActuatorAsset/velocity_target
+```
+
+It also publishes measured joint angle and angular velocity:
+
+```text
+JointActuatorAsset/joint_states
+```
+
+Run it with three terminals:
+
+```bash
+./src/cmake-build/examples/actuators/joint/joint-actuator-hakoniwa-asset
+```
+
+```bash
+python3 examples/actuators/joint/joint_actuator_sender.py
+```
+
+```bash
+hako-cmd start
+```
+
+The C++ process owns the MuJoCo viewer. The Python sender writes
+`std_msgs/Float64` command PDUs and prints the `sensor_msgs/JointState`
+feedback from the C++ asset. See
+[`docs/tutorial/joint-actuator-hakoniwa-ja.md`](../../../docs/tutorial/joint-actuator-hakoniwa-ja.md)
+for the full walkthrough.

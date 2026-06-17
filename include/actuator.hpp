@@ -4,7 +4,18 @@
 
 namespace hako::robots::actuator
 {
-    class ITorqueActuator
+    class IActuator
+    {
+    public:
+        virtual ~IActuator() {}
+        virtual bool ShouldUpdate(double delta_sec)
+        {
+            (void)delta_sec;
+            return true;
+        }
+    };
+
+    class ITorqueActuator : public IActuator
     {
     public:
         virtual ~ITorqueActuator() {}
@@ -32,13 +43,18 @@ namespace hako::robots::actuator
             double friction {0.0};
         } dynamics;
         std::string actuator_name;
+        struct {
+            std::string pdu_name;
+            double update_rate_hz {0.0};
+            std::string message_type;
+        } pdu_config;
     };
 
     struct JointActuatorTarget {
         double value {0.0};
     };
 
-    class IJointActuator
+    class IJointActuator : public IActuator
     {
     public:
         virtual ~IJointActuator() {}

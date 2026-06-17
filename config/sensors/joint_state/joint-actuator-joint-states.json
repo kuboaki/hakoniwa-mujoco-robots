@@ -1,0 +1,32 @@
+{
+  "$schema": "../schema/joint-state-output.schema.json",
+  "spec": {
+    "type": "joint_state",
+    "name": "joint_states",
+    "joints": [
+      {
+        "name": "position_hinge"
+      },
+      {
+        "name": "velocity_hinge"
+      }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      {
+        "name": "position_hinge",
+        "mjcf_joint": "position_hinge"
+      },
+      {
+        "name": "velocity_hinge",
+        "mjcf_joint": "velocity_hinge"
+      }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 50.0,
+    "message_type": "sensor_msgs/JointState"
+  }
+}

@@ -23,6 +23,8 @@ This is an interactive example. Automated checks for the same basic behavior are
 examples/sensors/ultrasonic/
   README.md
   ultrasonic-example.cpp
+  ultrasonic-hakoniwa-asset.cpp
+  read_range.py
   support/ultrasonic_example_support.hpp
   support/ultrasonic_example_support.cpp
 
@@ -31,6 +33,12 @@ models/sensors/ultrasonic/
 
 config/sensors/ultrasonic/
   lego-spike-distance-sensor.json
+
+config/
+  ultrasonic-pdudef-compact.json
+  ultrasonic-pdutypes.json
+  endpoint/ultrasonic_endpoint.json
+  endpoint/comm/shm_ultrasonic_comm.json
 
 tests/sensors/ultrasonic/unit/
   ultrasonic_config_loader_test.cpp
@@ -41,6 +49,8 @@ tests/sensors/ultrasonic/unit/
 Read these first:
 
 - [`ultrasonic-example.cpp`](./ultrasonic-example.cpp): the Ultrasonic Sensor API usage
+- [`ultrasonic-hakoniwa-asset.cpp`](./ultrasonic-hakoniwa-asset.cpp): publishes measured ranges as Hakoniwa PDU
+- [`read_range.py`](./read_range.py): Python Hakoniwa asset that receives and prints the range PDU
 - [`lego-spike-distance-sensor.json`](../../../config/sensors/ultrasonic/lego-spike-distance-sensor.json): the sensor config
 - [`ultrasonic-sensor-test.xml`](../../../models/sensors/ultrasonic/ultrasonic-sensor-test.xml): the MuJoCo model, sensor site, and obstacles
 
@@ -49,7 +59,7 @@ Read these first:
 The example uses the range sensor through `UltrasonicSensor`.
 
 ```cpp
-auto world = std::make_shared<ExampleWorld>();
+auto world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
 world->loadModel(model_path);
 
 UltrasonicSensor sensor(
@@ -99,30 +109,42 @@ Important fields:
 
 ```json
 {
-  "DetectionDistance": {
-    "Min": 0.05,
-    "Max": 2.0
+  "spec": {
+    "frame_id": "spike_distance_sensor_link",
+    "DetectionDistance": {
+      "Min": 0.05,
+      "Max": 2.0
+    },
+    "DistanceAccuracy": [
+      {
+        "StdDev": 0.0,
+        "Precision": 0.0,
+        "NoiseDistribution": "none"
+      }
+    ],
+    "Cone": {
+      "Horizontal": 0.0,
+      "Vertical": 0.0,
+      "RayCount": 1
+    },
+    "RadiationType": "ultrasound",
+    "UpdateRate": 100.0
   },
-  "DistanceAccuracy": [
-    {
-      "StdDev": 0.0,
-      "Precision": 0.0,
-      "NoiseDistribution": "none"
-    }
-  ],
-  "Cone": {
-    "Horizontal": 0.0,
-    "Vertical": 0.0,
-    "RayCount": 1
-  },
-  "RadiationType": "ultrasound",
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "source_site": "front_ultrasonic_site"
+  },
+  "pdu_config": {
+    "pdu_name": "range",
+    "update_rate_hz": 100.0,
+    "message_type": "sensor_msgs/Range"
   }
 }
 ```
 
-For this example, noise is disabled and `RayCount` is `1`, so the measurement is deterministic and easy to verify.
+`spec` is the physical sensor specification. `mjcf_binding` names the MJCF site
+used as the sensor origin and direction. `pdu_config` records the intended
+Hakoniwa PDU output settings. For this example, noise is disabled and
+`RayCount` is `1`, so the measurement is deterministic and easy to verify.
 
 ## Expected Distances
 
@@ -174,6 +196,12 @@ The example target is:
 ultrasonic-example
 ```
 
+To build the Hakoniwa PDU publisher example only:
+
+```bash
+cmake --build src/cmake-build --target ultrasonic-hakoniwa-asset
+```
+
 ## Run
 
 From the repository root:
@@ -207,6 +235,60 @@ q : quit
 Moving with `i`, `k`, `j`, or `l` updates the robot position and refreshes the ultrasonic measurement.
 
 Pressing `s` explicitly measures the current range and prints the latest result.
+
+## Hakoniwa PDU Publisher
+
+The Hakoniwa publisher example opens a MuJoCo viewer and publishes
+`sensor_msgs/Range` as a Hakoniwa PDU.
+
+Terminal 1: C++ publisher
+
+```bash
+./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-hakoniwa-asset
+```
+
+Terminal 2: Python reader
+
+```bash
+python3 examples/sensors/ultrasonic/read_range.py
+```
+
+Terminal 3: start trigger
+
+```bash
+hako-cmd start
+```
+
+The publisher uses:
+
+```cpp
+hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter
+```
+
+and sends values with:
+
+```cpp
+range_adapter->send(sensor.GetConfig(), frame);
+```
+
+Measurement and publishing are gated by `UltrasonicSensor::ShouldUpdate()`,
+so the runtime cadence follows `spec.UpdateRate`.
+
+The default PDU key is a PDU robot name plus a channel name:
+
+```text
+PduKey("UltrasonicAsset", "range")
+```
+
+`UltrasonicAsset` is the PDU robot name from
+`ultrasonic-pdudef-compact.json`, and `range` is the channel name from
+`ultrasonic-pdutypes.json`.
+
+The Python reader prints lines like:
+
+```text
+range=0.860 m min=0.050 max=2.000 fov=0.000 radiation_type=0
+```
 
 ## Viewer
 
@@ -346,6 +428,8 @@ Included:
 - deterministic range measurement
 - MuJoCo viewer ray overlay
 - `sensor_msgs/Range` PDU conversion
+- Hakoniwa PDU publisher example
+- Python Hakoniwa PDU reader example
 - automated unit tests for config, PDU conversion, and measurement values
 
 Not included yet:
