@@ -400,6 +400,7 @@ int spikehat_motor_run_to_position(spikehat_t *hat, int port,
 int spikehat_motor_get_speed(spikehat_t *hat, int port, int *speed) {
     if (!hat || !speed) return -1;
     sim_spikehat_t *sim = (sim_spikehat_t *)hat;
+    /* ctrl は符号反転済みなので、speed に戻すときも反転する */
     *speed = (int)round(sim->ctrl / SPEED_TO_CTRL);
     return 0;
 }
